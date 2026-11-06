@@ -1,0 +1,6 @@
+[project]
+name = "astria-collector"
+version = "0.0.0"
+description = "Collector (A11): program operator Windows untuk pengumpulan dari host dan USB/AndroidQF."
+requires-python = ">=3.14"
+dependencies = []
