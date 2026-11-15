@@ -1,0 +1,19 @@
+# Salin ke %LOCALAPPDATA%\AstriaCollector\config.toml. Berkas ini TIDAK memuat rahasia:
+# kunci HMAC disimpan di Windows Credential Manager (astria-collector secret-set --key-id <ID>).
+
+# HTTP hanya untuk loopback; alamat lain wajib HTTPS tanpa path atau kredensial.
+INGEST_BASE_URL = "http://127.0.0.1:8081"
+COLLECTOR_KEY_ID = "collector-1"
+
+# Alat eksternal (tidak dibundel). Path relatif dihitung dari folder aplikasi.
+ANDROIDQF_PATH = "tools/androidqf.exe"
+ANDROIDQF_SHA256 = "2a5aa89b8aa2145d1246372ef3310ffd1e6d8a457c59b0a232c3de79892d4650"
+ADB_PATH = "tools/platform-tools/adb.exe"
+ADB_SHA256 = "ganti-dengan-sha256-adb-yang-anda-pasang"
+
+# Opsional (nilai bawaan ditampilkan).
+# WORK_DIR = "C:/Users/<anda>/AppData/Local/AstriaCollector/work"
+# POLL_INTERVAL_S = 10
+# DEVICE_WAIT_MIN = 10
+# TASK_TIMEOUT_MIN = 60
+# UPLOAD_RETRIES = 5
