@@ -147,16 +147,23 @@ class Outcome:
         return self.state is State.SELESAI
 
 
-def production_acquirer(settings: Settings) -> Acquirer:
-    """AndroidQF through the fail-closed gate; v1.8.3 is rejected here with TOOL_INCOMPATIBLE."""
+def production_acquirer(settings: Settings, recipient: Callable[[], str]) -> Acquirer:
+    """AndroidQF through the gate: the official v1.8.3 is rejected (TOOL_INCOMPATIBLE); only the
+    digest-pinned build runs. ``recipient`` returns the age recipient Ingest publishes, already checked
+    against its published SHA-256 by the client."""
 
     def acquire(request: AcquireRequest) -> ProcessResult:
+        try:
+            age_recipient = recipient()
+        except (ClientError, OSError, ValueError) as error:
+            raise AndroidQFError("RECIPIENT_UNAVAILABLE") from error
         return androidqf.run_acquisition(
             settings.androidqf_path,
             settings.androidqf_sha256,
             request.serial,
             request.output_dir.parent,
             request.job.scope_flags.model_dump(),
+            age_recipient,
             timeout_s=request.timeout_s,
             cancel=request.cancel,
         )
@@ -354,8 +361,17 @@ class Runner:
             return self._after_failed_acquisition(run, job, directory, "CANCELLED", state=State.DIBATALKAN)
         if result.timed_out:
             return self._after_failed_acquisition(run, job, directory, "TASK_TIMEOUT")
-        if result.exit_code != 0 or result.output_truncated:
-            return self._after_failed_acquisition(run, job, directory, "ACQUISITION_FAILED")
+        if result.exit_code != 0:
+            incomplete = androidqf.incomplete_modules(result)
+            if incomplete is None:
+                log.warning("acquisition_exit", job_id=job.job_id, trace_id=job.trace_id, exit_code=result.exit_code)
+                return self._after_failed_acquisition(run, job, directory, "ACQUISITION_FAILED")
+            # Finalized archive with some modules incomplete: upload it; the exit code goes into the manifest.
+            log.warning("acquisition_incomplete_modules", job_id=job.job_id, trace_id=job.trace_id, modules=incomplete)
+        if result.output_truncated:
+            # AndroidQF prints progress for every module; on a real phone this passes the console capture limit.
+            # The console text is not evidence (the encrypted archive is), so only the exit code decides.
+            log.warning("acquisition_output_truncated", job_id=job.job_id, trace_id=job.trace_id)
 
         run.to(State.MENGEMAS)
         self._report(job, "mengemas")

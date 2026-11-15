@@ -10,8 +10,8 @@
 
 Collector (A11): konsol operator Windows yang menarik tugas pemindaian berpersetujuan dari `ingest`, memeriksa HP, menjalankan AndroidQF, lalu mengunggah arsip terenkripsi ber-hash. Repo ini adalah submodule dari workspace `triase-dfir` (folder `collector/`). Rancangan: `notes/2026-11-06-triase-dfir-app-collector.md` di repo root; hasil implementasi: `notes/2026-11-15-astria-collector-implementasi.md`.
 
-> **Status (2026-11-15): alur lengkap sudah dibangun dan diuji, tetapi pengambilan data dari HP sungguhan diblokir.**
-> AndroidQF v1.8.3 resmi tidak punya mode tanpa interaksi, kontrol cakupan, maupun penjamin enkripsi yang disyaratkan desain. Collector menolak menjalankannya (`TOOL_INCOMPATIBLE`) dan tidak ada saklar untuk melewati gerbang itu. Penyebab dan jalan keluar: [docs/androidqf-compatibility.md](docs/androidqf-compatibility.md). Tidak ada uji pada HP fisik; semua uji pengambilan memakai AndroidQF dan perangkat sintetis.
+> **Status (2026-11-15): alur lengkap sudah dibangun, diuji, dan berjalan pada satu HP Android milik tim.**
+> AndroidQF v1.8.3 resmi tidak memenuhi syarat desain (tanpa mode tanpa interaksi, kontrol cakupan, dan enkripsi wajib), jadi Collector hanya menjalankan build upstream `main` yang di-pin dengan SHA-256; build lain ditolak (`TOOL_INCOMPATIBLE`). Detail: [docs/androidqf-compatibility.md](docs/androidqf-compatibility.md). Uji HP fisik 15 Nov 2026 (cakupan minimum): arsip age 483 MB diterima Ingest dengan hash cocok dan bisa didekripsi server (119 entri); data dihapus setelah uji.
 
 ## Yang dikerjakan Collector
 
@@ -111,7 +111,7 @@ flowchart TD
     C -->|batas waktu| K[kedaluwarsa]
     C -->|serial lain| G[gagal]
     D --> E[mengambil]
-    E -->|exit 0 dan satu .zip.age| F[mengemas]
+    E -->|exit 0, atau exit 1 'incomplete module(s)', dan satu .zip.age| F[mengemas]
     E -->|galat, batas waktu, Ctrl+C| G
     F -->|SHA-256 dan manifest.json| H[mengunggah]
     H -->|201 cocok hash dan ukuran| S[selesai]
@@ -169,7 +169,7 @@ Build memakai `SOURCE_DATE_EPOCH` dan `PYTHONHASHSEED` tetap; dua build berturut
 
 ## Batasan yang diketahui
 
-- **Pengambilan HP nyata diblokir** oleh AndroidQF v1.8.3 (lihat status di atas). Belum ada uji HP fisik.
+- Baru diuji pada satu HP Android. AndroidQF sering menandai sebagian modul tidak lengkap di HP nyata (exit 1 setelah arsip final); Collector tetap mengunggah arsip itu dan mencatat exit code di `manifest.json`.
 - Exe belum ditandatangani (Authenticode); SmartScreen dapat memperingatkan pada komputer lain. Defender memindai folder hasil build tanpa temuan (2026-11-15); pemindai lain belum diuji.
 - Hanya satu tugas yang ditarik per menu; `ingest` menawarkan tugas siap berikutnya, bukan daftar.
 - Metadata akuisisi ada di dalam arsip terenkripsi, sehingga status modul tidak diketahui Collector.

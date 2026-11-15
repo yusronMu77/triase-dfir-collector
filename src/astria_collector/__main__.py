@@ -59,7 +59,7 @@ def check_report(settings: Settings) -> tuple[list[str], bool]:
     ok = True
     try:
         info = androidqf.inspect_tool(settings.androidqf_path, settings.androidqf_sha256, settings.work_dir.parent)
-        lines.append(f"AndroidQF: v{info.version}, SHA-256 cocok ({info.sha256[:12]}...)")
+        lines.append(f"AndroidQF: v{info.version.removeprefix('v')}, SHA-256 cocok ({info.sha256[:12]}...)")
         try:
             androidqf.require_compatible(info)
         except androidqf.AndroidQFError as error:
@@ -97,7 +97,7 @@ def build_runner(settings: Settings, client: IngestClient, say) -> Runner:
     return Runner(
         settings,
         client,
-        acquire=production_acquirer(settings),
+        acquire=production_acquirer(settings, lambda: client.config().age_recipient),
         wait=production_waiter(settings),
         preflight=production_preflight(settings),
         on_status=lambda code: say(menu.DEVICE_STATUS.get(code, code)),

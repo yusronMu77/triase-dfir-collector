@@ -55,10 +55,23 @@ REASONS = {
     "TASK_TIMEOUT": "Batas waktu tugas habis; AndroidQF dihentikan.",
     "ACQUISITION_FAILED": "AndroidQF berakhir dengan galat.",
     "TOOL_INCOMPATIBLE": (
-        "AndroidQF yang terpasang (v1.8.3) tidak punya mode tanpa interaksi dan kontrol cakupan yang "
-        "disyaratkan. Pemindaian ditolak demi keamanan. Lihat docs/androidqf-compatibility.md."
+        "AndroidQF yang terpasang tidak punya mode tanpa interaksi dan kontrol cakupan yang disyaratkan "
+        "(rilis resmi v1.8.3). Pasang build yang disetujui; lihat docs/androidqf-compatibility.md."
     ),
-    "TOOL_PROFILE_UNAPPROVED": "Versi AndroidQF ini belum disetujui untuk pengambilan data.",
+    "TOOL_PROFILE_UNAPPROVED": (
+        "Build AndroidQF ini belum disetujui untuk pengambilan data. Hanya build yang SHA-256-nya "
+        "tercatat di Collector yang dijalankan (docs/androidqf-compatibility.md)."
+    ),
+    "TOOL_DIRECTORY_HAS_KEY": (
+        "Ada key.txt di folder AndroidQF. Hapus berkas itu; kunci hanya dibuat Collector per tugas."
+    ),
+    "RECIPIENT_UNAVAILABLE": "Kunci publik enkripsi dari Ingest tidak bisa diambil. Pemindaian tidak dimulai.",
+    "RECIPIENT_INVALID": "Kunci publik enkripsi dari Ingest tidak sah. Pemindaian tidak dimulai.",
+    "RECIPIENT_FILE_EXISTS": "Folder tugas sudah berisi key.txt. Pemindaian tidak dimulai.",
+    "RECIPIENT_FILE_UNWRITABLE": "key.txt tidak bisa ditulis di folder tugas. Pemindaian tidak dimulai.",
+    "UNEXPECTED_ARTIFACT": (
+        "AndroidQF menghasilkan berkas selain satu arsip terenkripsi. Tugas gagal; buang folder lewat menu."
+    ),
     "TOOL_CHECKSUM_MISMATCH": "SHA-256 alat tidak cocok dengan konfigurasi. Alat tidak dijalankan.",
     "TOOL_VERSION_UNSUPPORTED": "Versi AndroidQF tidak didukung.",
     "NETWORK_UNAVAILABLE": "Ingest tidak terjangkau. Arsip terenkripsi disimpan; unggah ulang dari menu.",

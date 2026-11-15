@@ -34,7 +34,8 @@ from sqlalchemy import text
 
 KEY_ID = "collector-1"
 KEY = bytes(range(32))
-SERIAL = "SYNTHETIC0017K2A"
+# The physical-device run (scripts in the collector note) overrides both; tests use the synthetic values.
+SERIAL = os.environ.get("ASTRIA_HARNESS_SERIAL", "SYNTHETIC0017K2A")
 AUTHORIZER = "harness-authorizer"
 
 
@@ -59,7 +60,7 @@ def main() -> int:
         verifier = ServiceTokenVerifier(
             JwksSource("http://unused.invalid", fetch=lambda: {"keys": [signing.public_jwk()]})
         )
-        recipient = "age1" + "q" * 58
+        recipient = os.environ.get("ASTRIA_HARNESS_RECIPIENT", "age1" + "q" * 58)
         settings = Settings(
             env="test",
             database_url=SecretStr(db_url),
