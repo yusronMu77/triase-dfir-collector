@@ -39,7 +39,30 @@ jobs:
           enable-cache: true
       - run: uvx ruff@0.17.4 format --check .
       - run: uvx ruff@0.17.4 check .
-      - name: pytest (kerangka, exit 5 = belum ada tes, diterima)
-        run: uv run --no-project --with pytest==9.2.0 pytest -q || [ "$?" -eq 5 ]
       - name: gitleaks
         run: docker run --rm -v "$PWD:/repo" -w /repo "$GITLEAKS_IMAGE" git --redact --no-banner /repo
+
+  # Collector memakai API Windows (Job Object, Credential Manager, SetThreadExecutionState); ujinya wajib di Windows.
+  windows:
+    runs-on: windows-2025
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: ${{ env.UV_VERSION }}
+          python-version: "3.14"
+          enable-cache: true
+      - run: uv sync --locked
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pyright
+      - name: unit, properti, keamanan, integrasi (e2e butuh Ingest dan PostgreSQL, dijalankan lokal)
+        run: uv run pytest --ignore=tests/e2e -q
+      - name: pip-audit
+        shell: bash
+        run: |
+          uv export --frozen --no-dev --no-emit-project -o requirements.txt
+          uv run pip-audit -r requirements.txt --no-deps --disable-pip
