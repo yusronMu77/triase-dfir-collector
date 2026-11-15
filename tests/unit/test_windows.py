@@ -119,6 +119,16 @@ def test_process_output_bounded_and_private(tmp_path):
     assert result.stdout not in repr(result)
 
 
+def test_process_tail_survives_truncation(tmp_path):
+    code = "print('x'*20000); print('LAST LINE')"
+    result = run_process([sys.executable, "-c", code], cwd=tmp_path, timeout_s=10, output_limit=128)
+    assert result.output_truncated
+    assert "LAST LINE" not in result.stdout
+    assert "LAST LINE" in result.tail
+    assert len(result.tail) <= 2 * 8192 + 1
+    assert result.tail not in repr(result)
+
+
 def test_process_timeout(tmp_path):
     result = run_process([sys.executable, "-c", "import time; time.sleep(30)"], cwd=tmp_path, timeout_s=0.15)
     assert result.timed_out

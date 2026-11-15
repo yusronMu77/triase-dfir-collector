@@ -27,6 +27,9 @@ class ProcessResult:
     timed_out: bool = False
     cancelled: bool = False
     output_truncated: bool = False
+    # Last bytes of stdout and stderr, kept even when the head capture is truncated: a tool's final
+    # status line (AndroidQF's "finalized with N incomplete module(s)") comes last.
+    tail: str = field(default="", repr=False)
 
 
 def restricted_environment(cwd: Path, tool_dirs: Sequence[Path] = ()) -> dict[str, str]:
@@ -173,8 +176,11 @@ class _WindowsJob:
 
 
 class _Capture:
+    TAIL = 8192
+
     def __init__(self, limit: int) -> None:
         self.data = bytearray()
+        self.tail = bytearray()
         self.limit = limit
         self.truncated = False
 
@@ -184,6 +190,8 @@ class _Capture:
                 remaining = self.limit - len(self.data)
                 self.data.extend(chunk[:remaining])
                 self.truncated |= len(chunk) > remaining
+                self.tail.extend(chunk)
+                del self.tail[: max(0, len(self.tail) - self.TAIL)]
         finally:
             pipe.close()
 
@@ -271,6 +279,7 @@ def run_process(
         timed_out,
         cancelled,
         any(capture.truncated for capture in captures),
+        "\n".join(capture.tail.decode("utf-8", errors="replace") for capture in captures),
     )
 
 

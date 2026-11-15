@@ -162,5 +162,7 @@ def test_acquisition_gate_runs_no_device_command(tmp_path: Path, monkeypatch: py
     runner = Mock()
     monkeypatch.setattr(androidqf, "run_process", runner)
     with pytest.raises(androidqf.AndroidQFError, match="TOOL_INCOMPATIBLE"):
-        androidqf.run_acquisition(tmp_path / "tool.exe", "0" * 64, "USB123", tmp_path, scope(), timeout_s=1)
+        androidqf.run_acquisition(
+            tmp_path / "tool.exe", "0" * 64, "USB123", tmp_path, scope(), "age1" + "q" * 58, timeout_s=1
+        )
     runner.assert_not_called()

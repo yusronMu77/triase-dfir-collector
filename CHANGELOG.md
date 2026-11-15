@@ -16,5 +16,10 @@
 
 ### Fixed
 
+- Pengambilan di HP fisik (collector#2, 15 Nov 2026): keluaran konsol AndroidQF yang melewati batas tangkap 256 KB tidak
+  lagi menggagalkan tugas; yang menentukan exit code. AndroidQF yang keluar dengan kode 1 karena "Acquisition finalized
+  with N incomplete module(s)" (arsip sudah final dan terenkripsi) kini tetap diunggah; exit code tercatat di
+  `manifest.json` dan status modul dinilai server setelah dekripsi. Exit lain tetap `ACQUISITION_FAILED`. Tangkapan
+  proses kini menyimpan 8 KB terakhir stdout/stderr untuk membaca baris status terakhir.
 - Pengurai `adb version` gagal pada keluaran CRLF adb Windows asli (`ADB_VERSION_INVALID`).
 - Penolakan alat yang tidak sesuai kini terjadi sebelum operator diminta mencolok HP, tanpa menandai tugas gagal di server.

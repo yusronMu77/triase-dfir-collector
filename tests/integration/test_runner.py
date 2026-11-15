@@ -187,7 +187,6 @@ def test_tampered_tool_checksum_blocks_everything(settings: Settings, job: Job) 
         (ProcessResult(1, "", ""), "ACQUISITION_FAILED", State.GAGAL),
         (ProcessResult(-1, "", "", timed_out=True), "TASK_TIMEOUT", State.GAGAL),
         (ProcessResult(-1, "", "", cancelled=True), "CANCELLED", State.DIBATALKAN),
-        (ProcessResult(0, "", "", output_truncated=True), "ACQUISITION_FAILED", State.GAGAL),
     ],
 )
 def test_acquisition_failures_report_gagal_and_never_upload(settings: Settings, job: Job, result, code, state) -> None:
@@ -452,3 +451,58 @@ def test_console_refuses_before_asking_for_confirmation_or_showing_usb_steps(set
     text = "\n".join(said)
     assert "tidak punya mode tanpa interaksi" in text
     assert "USB debugging" not in text
+
+
+def test_long_console_output_does_not_fail_a_clean_acquisition(settings: Settings, job: Job) -> None:
+    """A real phone makes AndroidQF print more than the capture limit; only the exit code decides (2026-11-15)."""
+
+    def acquire(request: AcquireRequest) -> ProcessResult:
+        good_acquirer()(request)
+        return ProcessResult(0, "progress " * 10, "", False, False, True)
+
+    uplink = FakeUplink()
+    outcome = make_runner(settings, uplink, acquire=acquire).execute(job, confirmed(job))
+    assert outcome.ok
+    assert outcome.code == "ACKNOWLEDGED"
+
+
+def test_nonzero_exit_still_fails_and_keeps_the_partial_output(settings: Settings, job: Job) -> None:
+    def acquire(request: AcquireRequest) -> ProcessResult:
+        good_acquirer()(request)
+        return ProcessResult(1, "", "boom", False, False, True)
+
+    outcome = make_runner(settings, FakeUplink(), acquire=acquire).execute(job, confirmed(job))
+    assert not outcome.ok
+    assert outcome.code == "ACQUISITION_FAILED"
+    assert job_dir(settings, job).exists()  # partial output kept until the operator discards it
+
+
+INCOMPLETE_TAIL = (
+    "INFO Finalizing acquisition archive...\n"
+    "\x1b[31mFATAL\x1b[0m Acquisition finalized with 2 incomplete module(s). "
+    "Review acquisition.json and command.log for details.\n"
+)
+
+
+def test_finalized_archive_with_incomplete_modules_is_uploaded_with_its_exit_code(settings: Settings, job: Job) -> None:
+    """Real phone, 2026-11-15: AndroidQF exits 1 after finalizing when some modules fail; the archive is complete."""
+
+    def acquire(request: AcquireRequest) -> ProcessResult:
+        good_acquirer()(request)
+        return ProcessResult(1, "progress " * 10, "", False, False, True, INCOMPLETE_TAIL)
+
+    uplink = FakeUplink()
+    outcome = make_runner(settings, uplink, acquire=acquire).execute(job, confirmed(job))
+    assert outcome.ok
+    assert uplink.uploaded[0].process_exit_code == 1
+
+
+def test_other_exit_one_still_fails_even_if_the_message_is_not_last(settings: Settings, job: Job) -> None:
+    def acquire(request: AcquireRequest) -> ProcessResult:
+        good_acquirer()(request)
+        tail = INCOMPLETE_TAIL + "FATAL Failed to finalize acquisition archive\n" + "x\n" * 6
+        return ProcessResult(1, "", "", False, False, False, tail)
+
+    outcome = make_runner(settings, FakeUplink(), acquire=acquire).execute(job, confirmed(job))
+    assert not outcome.ok
+    assert outcome.code == "ACQUISITION_FAILED"

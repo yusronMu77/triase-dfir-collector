@@ -1,9 +1,60 @@
 # AndroidQF compatibility decision
 
 Verified on 2026-11-15 against the official Windows v1.8.3 release and its tagged
-source. **Acquisition is blocked:** this release cannot enforce the approved
-non-interactive scope and encrypted workspace contract. This is an external
-dependency blocker, not successful physical-device validation.
+source. **The official release stays blocked:** it cannot enforce the approved
+non-interactive scope and encrypted workspace contract.
+
+**Update 2026-11-15 (owner decision, collector#2):** Collector approves exactly one
+build compiled from upstream `main` at commit
+`05811f3c6f1df58ad633f2f6c47598cab994dd57` (7 Nov 2026, not yet released). See
+[Approved build](#approved-build). The sections below the approved-build section
+describe the v1.8.3 findings that led to it.
+
+## Approved build
+
+Upstream `main` at `05811f3c6` closes the v1.8.3 gaps that matter to Collector:
+
+| v1.8.3 gap | `main` at `05811f3c6` | Collector |
+|---|---|---|
+| No `-non-interactive` | `-non-interactive` fails instead of prompting and skips the final Enter | Always passed |
+| No scope flags | `-backup`, `-download`, `-remove-trusted`, `-intrusion-logs`, `-hash-files`, `-browser-history`, `-magisk-modules` | Mapped from the job scope (`build_args`) |
+| Output in the executable folder | `-output` is honoured (`NewStreamingZipWriter`) | `-output <job>\output` |
+| No `-key` | `key.txt` is read from the working directory first, then the executable folder (`acquisition/key.go`) | Writes the Ingest recipient to `<job>\key.txt` (exclusive create) and runs with cwd = job folder; refuses to start if `key.txt` exists beside the exe |
+| Plaintext fallback | Without `key.txt` the archive is plaintext; an unreadable or invalid `key.txt` is an error | The recipient file is always present; `pack.adopt_archive` accepts only one `*.zip.age` with an age header, anything else fails the job (`UNEXPECTED_ARTIFACT`) |
+| Module status | Still inside the ciphertext | Unchanged: `pending_verification` until the server decrypts |
+
+Approval is the pair (SHA-256, version string) in `APPROVED_BUILDS` in
+`src/astria_collector/androidqf.py`. Help text never approves a binary, and
+changing the configured checksum cannot approve another one. `Manifest.androidqf_version`
+and Ingest's `CollectorConfig` still carry the release line `1.8.3`; the exact
+build is identified by `androidqf_sha256` in the manifest.
+
+### Reproducible build
+
+On Windows with Go 1.27.3 (fetched by `GOTOOLCHAIN=auto` from `go.mod`):
+
+```sh
+git clone https://github.com/mvt-project/androidqf.git && cd androidqf
+git checkout 05811f3c6f1df58ad633f2f6c47598cab994dd57
+export GOTOOLCHAIN=auto GOFLAGS=-trimpath CGO_ENABLED=0
+(cd android-collector &&
+ GOOS=linux GOARCH=arm GOARM=6 go build -ldflags="-s -w -buildid=" -o ../assets/collector_arm . &&
+ GOOS=linux GOARCH=arm64 go build -ldflags="-s -w -buildid=" -o ../assets/collector_arm64 . &&
+ GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -buildid=" -o ../assets/collector_amd64 .)
+cp <platform-tools>/adb.exe <platform-tools>/AdbWinApi.dll <platform-tools>/AdbWinUsbApi.dll assets/
+GOOS=windows GOARCH=amd64 go build \
+  -ldflags="-s -w -buildid= -X github.com/mvt-project/androidqf/utils.Version=v1.8.3-95-g05811f3" \
+  -o build/androidqf_windows_amd64.exe .
+```
+
+The embedded adb is Google platform-tools 37.0.1 (`adb version` 1.0.41):
+`adb.exe` `b4a6b455702684652cccf7b46258b29e653538904359a58fd4931cf3ef286b3f`,
+`AdbWinApi.dll` `c1d653030b4bde65d3e07e4d0b0979e17be56df1436cdd15528630f27808050d`,
+`AdbWinUsbApi.dll` `0710e894d9b40f71a670c13c694079d564c92c1279da382cfe4850983aaebe1b`.
+A different adb changes the executable digest and the build is no longer approved.
+
+Upstream CI builds Windows with CGO and mingw; this build uses `CGO_ENABLED=0`
+(no package in the tree imports `C`).
 
 ## Evidence
 
